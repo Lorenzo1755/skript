@@ -1,0 +1,204 @@
+#-----------------------------------------------------------------------------------------------------#
+#  ______     ______     ______     ______     __  __        ______     __  __     ______   __  __    #
+# /\  ___\   /\  == \   /\  __ \   /\___  \   /\ \_\ \      /\  __ \   /\ \/\ \   /\__  _\ /\ \_\ \   #
+# \ \ \____  \ \  __<   \ \  __ \  \/_/  /__  \ \____ \     \ \  __ \  \ \ \_\ \  \/_/\ \/ \ \  __ \  #
+#  \ \_____\  \ \_\ \_\  \ \_\ \_\   /\_____\  \/\_____\     \ \_\ \_\  \ \_____\    \ \_\  \ \_\ \_\ #
+#   \/_____/   \/_/ /_/   \/_/\/_/   \/_____/   \/_____/      \/_/\/_/   \/_____/     \/_/   \/_/\/_/ #
+#                                                                                                     #
+#-----------------------------------------------------------------------------------------------------#
+# Author: vLorenzo
+# Version: 1.0
+#-----------------------------------------------------------------------------------------------------#
+
+on join:
+	set {crazyauth.ip.%player%} to ip of player
+	if {crazyauth::premium::%player%} = 2:
+		set {crazyauth::loggedin::%player%} to 1
+		send title "&a&l✓ Auth" with subtitle "&7Automatically logged in for premium account" for 4 seconds
+	else:
+		if {crazyauth::loggedin::%player%} is not set:
+			if {crazyauth::password::%player%} is set:
+				send title "&a&l✓ Auth" with subtitle "&7/login <password>"
+			else:
+				send title "&a&l✓ Auth" with subtitle "&7/register <password> <password>"
+		else:
+			if {crazyauth.quitip.%player%} is not equal to {crazyauth.ip.%player%}:
+				if {crazyauth::premium::%player%} = 2:
+					send title "&a&l✓ Auth" with subtitle "&7Automatically logged in for premium account" for 4 seconds
+				else:
+					delete {crazyauth::loggedin::%player%}
+			else:
+				if {crazyauth::loggedin::%player%} is set:
+					send title "&a&l✓ Auth" with subtitle "&7Automatically logged in for active session" for 4 seconds
+				log "[INFO] %player% Automatically logged in for active session" to "crazyauthlog.log"
+
+on any move:
+	if {crazyauth::loggedin::%player%} is not set:
+		if {crazyauthspawn} is set:
+			teleport player to {crazyauthspawn}
+			if {crazyauth::password::%player%} is set:
+				send title "&a&l✓ Auth" with subtitle "&7/login <password>"
+			else:
+				send title "&a&l✓ Auth" with subtitle "&7/register <password> <password>"
+	else:
+		if {crazyauth::password::%player%} is set:
+			send title "&a&l✓ Auth" with subtitle "&7/login <password>"
+		else:
+			send title "&a&l✓ Auth" with subtitle "&7/register <password> <password>"
+			cancel event
+	
+on command:
+	command sender is player:
+		if {crazyauth::loggedin::%player%} is not set:
+			if command is not "login" or "register" or "changepassword":
+				cancel event
+				send title "&c&l✗ Auth" with subtitle "&7You need to login"
+			
+every 10 seconds:
+	loop all players:
+		if {crazyauth::premium::%loop-player%} = 2:
+			stop
+		else:
+			set {crazyauth::loggedin::%loop-player%} to 2
+		
+on chat:
+	if {crazyauth::loggedin::%player%} is not set:
+		cancel event
+		send title "&c&l✗ Auth" with subtitle "&7You need to login"
+	
+on quit:
+	if {crazyauth::loggedin::%player%} = 2:
+		delete {crazyauth::loggedin::%player%}
+	set {crazyauth.quitip.%player%} to ip of player
+
+
+	
+#	REGISTER --------------------------------------------------------------------
+
+command /register [<text>] [<text>] [<text>]:
+	aliases: /r
+	trigger:
+		if player has permissions "crazyauth.register":
+			if {crazyauth::password::%player%} is set:
+				send title "✗ Auth" with subtitle "&7Arleady registered"
+			else:
+				if {crazyauth::password::%player%} is not set:
+					if arg-1 is not set:
+						send title "✗ Auth" with subtitle "&7/register <password> <password>"
+					else:
+						if arg-1 is not arg-2:
+							send title "&c&lPassword" with subtitle "&7Password not match"
+							message "&e&l! Auth &7/register <password> <password>"
+						else:
+							set {crazyauth::password::%player%} to arg-1
+							wait a tick
+							set {crazyauth::loggedin::%player%} to 1
+							send title "&a&l✓ Auth" with subtitle "&7Succesfully registered"
+							log "[REGISTER] %player% Has registered his account" to "crazyauthlog.log"
+
+#	LOGIN -----------------------------------------------------------------------
+
+command /login [<text>] [<text>] [<text>]:
+	aliases: /l
+	usage: /login
+	trigger:
+		if player has permissions "crazyauth.login":
+			if {crazyauth::password::%player%} is not set:
+				send title "&c&l✗ Auth" with subtitle "&7You need to register before use /login"
+			else:
+				if {crazyauth::loggedin::%player%} = 1:
+					send title "&e&l! Auth" with subtitle "&7Arleady logged in"
+				else:
+					if arg-1 is not {crazyauth::password::%player%}:
+						send title "&c&l✗ Auth" with subtitle "&7Incorrect password"
+					else:
+						send title "&a&l✓ Auth" with subtitle "&7Succesfully logged in"
+						set {crazyauth::loggedin::%player%} to 1
+						log "[LOGIN] %player% Has logged in his account" to "crazyauthlog.log"
+					
+#	CHANGEPASSWORD -----------------------------------------------------------------------
+					
+command /changepassword [<text>] [<text>]:
+	trigger:
+		if player has permissions "crazyauth.changepassword":
+			if arg-1 is not set:
+				send title "&c&lAuth" with subtitle "&7/changepassword <current-password> <new-password>"
+			else:
+				if {crazyauth::password::%player%} is not set:
+					send title "&c&l✗ Auth" with subtitle "&7You need to register before use /login"
+				else:
+					if {crazyauth::loggedin::%player%} = 1:
+						send title "&e&l! Auth" with subtitle "&7You need to unlog your account"
+					else:
+						if arg-1 is not {crazyauth::password::%player%}:
+							send title "&c&l✗ Auth" with subtitle "&7Incorrect password"
+						else:
+							if arg-1 is {crazyauth::password::%player%}:
+								if arg-2 is set:
+									set {crazyauth::password::%player%} to arg-2
+									send title "&a&l✓ Auth" with subtitle "&7Succesfully changed password"
+									set {crazyauth::loggedin::%player%} to 1
+									log "[INFO] %player% Has changed the password for %arg-2%" to "crazyauthlog.log"
+								else:
+									send title "&c&l✗ Auth" with subtitle "&7You need to provide a password"
+							else:
+								send title "&c&l✗ Auth" with subtitle "&7Incorrect password"
+							
+#	COMMANDS -----------------------------------------------------------------------
+
+command /premium:
+	trigger:
+		if {crazyauth::premium::%player%} = 2:
+			send title "&a&l✓ Auth" with subtitle "&7Premium account activated"
+			message "&e&l! Auth &7If you want to be a no premium account session anymore, contact to the staff"
+			stop
+		else:
+			message "&e&l! Auth &7Retype /premium for confirm you are a premium account"
+			if {crazyauth::premium::%player%} is not set:
+				set {crazyauth::premium::%player%} to 0
+			add 1 to {crazyauth::premium::%player%}
+
+command /crazyauth [<text>] [<text>]:
+	trigger:
+		if player has permissions "crazyauth.admin":
+			if arg-1 is "setspawn":
+				set {crazyauthspawn} to player's location
+				send title "&a&l✓ Admin Auth" with subtitle "&7Succesfully maked a spawn"
+			else:
+				if arg-1 is "spawn":
+					teleport player to {crazyauthspawn}
+				else:
+					if arg-1 is "deletespawn":
+						delete {crazyauthspawn}
+					else:
+						if arg-1 is "deletepassword":
+							if arg-2 is set:
+								execute console command "kick %arg-2% Auth, an administrator has made changes to your account, re-enter if necessary"
+								delete {crazyauth::password::%arg-2%}
+								wait a tick
+								delete {crazyauth::loggedin::%arg-2%}
+								log "[INFO] %player% Has deleted the password for %arg-2%" to "crazyauthlog.log"
+								send title "&a&l✓ Admin Auth" with subtitle "&7Succesfully deleted password for %arg-2%"
+						else:
+							if arg-1 is "deactivatepremium":
+								if arg-2 is set:
+									loop all players:
+										execute console command "kick %arg-2% Auth, an administrator has made changes to your account, re-enter if necessary"
+										delete {crazyauth::premium::%arg-2%}
+										wait a tick
+										delete {crazyauth::password::%arg-2%}
+										wait a tick
+										delete {crazyauth::loggedin::%arg-2%}										
+										send title "&a&l✓ Admin Auth" with subtitle "&7Succesfully deleted premium session for %arg-2%"
+							else:
+								message ""
+								message "&a&lAuth"
+								message ""
+								message "&7/crazyauth setspawn"
+								message "&7/crazyauth spawn"
+								message "&7/crazyauth deletespawn"
+								message "&7/crazyauth deactivatepremium [player]"
+								message "&7/crazyauth deletepassword [player]"
+								message ""
+		else:
+			message "&cYou dont have permissions to do that"
